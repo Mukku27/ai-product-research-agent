@@ -1,5 +1,4 @@
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 
@@ -11,6 +10,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import OllamaLLM
 
 from vector_db_client import get_opensearch_client
+
+
+DEFAULT_RESEARCH_AREA = "Lithium Battery"
+
+
+def normalize_research_area(research_area):
+    """Return a non-empty research area for prompt rendering."""
+    if research_area and research_area.strip():
+        return research_area.strip()
+    return DEFAULT_RESEARCH_AREA
 
 
 # Check if Ollama is available and get available models
@@ -131,16 +140,21 @@ class AnalyzePatentTrendsTool(BaseTool):
 
 
 # Define our agents
-def create_patent_analysis_crew(model_name="llama3"):
+def create_patent_analysis_crew(
+    model_name="llama3", research_area=DEFAULT_RESEARCH_AREA
+):
     """
     Create a CrewAI crew for patent analysis using Ollama.
 
     Args:
         model_name: Name of the Ollama model to use
+        research_area: Research area to analyze
 
     Returns:
         Crew: A CrewAI crew configured for patent analysis
     """
+    research_area = normalize_research_area(research_area)
+
     # Check if model exists in Ollama
     available_models = check_ollama_availability()
     if not available_models:
@@ -151,10 +165,7 @@ def create_patent_analysis_crew(model_name="llama3"):
     # Test model
     if not test_model(model_name):
         raise RuntimeError(f"Model {model_name} is not responding to test prompts.")
-    
     print("model found and tested successfully")
-
-    
 
     llm = OllamaLLM(model=model_name, temperature=0.2)
 
@@ -208,28 +219,31 @@ def create_patent_analysis_crew(model_name="llama3"):
 
     # Create tasks with shorter, simpler descriptions (to reduce LLM load)
     task1 = Task(
-        description="""
-        Define a research plan for lithium battery patents:
+        description=f"""
+        Define a research plan for {research_area} patents:
         1. Key technology areas to focus on
         2. Time periods for analysis (focus on last 3 years)
         3. Specific technological aspects to analyze
         """,
-        expected_output="""A research plan with focus areas, time periods, and key technological aspects.""",
+        expected_output=f"""A research plan for {research_area} patents with focus areas,
+        time periods, and key technological aspects.""",
         agent=research_director,
     )
 
     task2 = Task(
-        description="""
-        Using the research plan, retrieve patents related to lithium battery technology from the last 3 years.
+        description=f"""
+        Using the research plan, retrieve patents related to {research_area}
+        from the last 3 years.
         Use the search_patents and search_patents_by_date_range tools to gather comprehensive data.
         Focus on the most relevant and innovative patents.
-        Group patents by sub-technologies within lithium batteries.
+        Group patents by sub-technologies within {research_area}.
         Provide a summary of the retrieved patents, including:
         - Total number of patents found
         - Key companies/assignees
         - Main technological categories
         """,
-        expected_output="""A comprehensive patent retrieval report containing:
+        expected_output=f"""A comprehensive patent retrieval report for {research_area}
+        containing:
         - Summary of total patents found
         - List of key patents grouped by sub-technology
         - Analysis of top companies/assignees
@@ -241,17 +255,18 @@ def create_patent_analysis_crew(model_name="llama3"):
     )
 
     task3 = Task(
-        description="""
-        Analyze the retrieved patent data to identify trends and patterns:
+        description=f"""
+        Analyze the retrieved patent data for {research_area} to identify trends
+        and patterns:
         1. Identify growing vs. declining areas of innovation
         2. Analyze technology evolution over time
         3. Identify key companies and their focus areas
-        4. Determine emerging sub-technologies within lithium batteries
+        4. Determine emerging sub-technologies within {research_area}
         5. Analyze patent claims to understand technological improvements
         
         Create a comprehensive analysis with specific trends, supported by data.
         """,
-        expected_output="""A trend analysis report containing:
+        expected_output=f"""A trend analysis report for {research_area} containing:
         - Identification of growing vs. declining technology areas
         - Timeline of technology evolution
         - Company focus analysis
@@ -264,8 +279,9 @@ def create_patent_analysis_crew(model_name="llama3"):
     )
 
     task4 = Task(
-        description="""
-        Based on the patent analysis, predict future innovations in lithium battery technology:
+        description=f"""
+        Based on the patent analysis, predict future innovations in
+        {research_area}:
         1. Identify technologies likely to see breakthroughs in the next 2-3 years
         2. Recommend specific areas for R&D investment
         3. Predict which companies are positioned to lead innovation
@@ -274,7 +290,8 @@ def create_patent_analysis_crew(model_name="llama3"):
         
         Create a detailed forecast with specific technology predictions and justification.
         """,
-        expected_output="""A future innovation forecast containing:
+        expected_output=f"""A future innovation forecast for {research_area}
+        containing:
         - Predicted breakthrough technologies for next 2-3 years
         - Prioritized list of R&D investment areas
         - Companies likely to lead future innovation
@@ -315,8 +332,9 @@ def run_patent_analysis(research_area="Lithium Battery", model_name="llama3"):
         str: Analysis results
     """
     try:
-        crew = create_patent_analysis_crew(model_name)
-        result = crew.kickoff(inputs={"research_area": research_area})
+        normalized_research_area = normalize_research_area(research_area)
+        crew = create_patent_analysis_crew(model_name, normalized_research_area)
+        result = crew.kickoff(inputs={"research_area": normalized_research_area})
 
         # Extract the string output from the CrewOutput object
         if hasattr(result, "output"):

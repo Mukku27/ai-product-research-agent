@@ -12,7 +12,7 @@ from search_tools import hybrid_search, iterative_search, semantic_search, keywo
 def display_menu():
     """Display the main menu options"""
     print("\n" + "=" * 60)
-    print("  PATENT INNOVATION PREDICTOR - LITHIUM BATTERY TECHNOLOGY  ")
+    print("  PATENT INNOVATION PREDICTOR - MULTI-DOMAIN ANALYSIS  ")
     print("=" * 60)
     print("1. Run complete patent trend analysis and forecasting")
     print("2. Search for specific patents")
