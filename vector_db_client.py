@@ -21,16 +21,20 @@ def get_opensearch_client(host, port):
     return client
 
 
-def create_index_if_not_exists(client, index_name):
+def create_index_if_not_exists(client, index_name, recreate=False):
     """
     Create an OpenSearch index with proper mapping for vector search if it doesn't exist.
 
     Args:
         client: OpenSearch client instance
         index_name: Name of the index to create
+        recreate: When True, explicitly delete and recreate an existing index.
     """
-    # Delete the index if it exists (to ensure proper mapping)
     if client.indices.exists(index=index_name):
+        if not recreate:
+            print(f"Index '{index_name}' already exists. Leaving the existing data intact.")
+            return False
+
         print(
             f"Deleting existing index '{index_name}' to recreate with proper mappings..."
         )
@@ -70,6 +74,7 @@ def create_index_if_not_exists(client, index_name):
     try:
         client.indices.create(index=index_name, body=mappings)
         print(f"Created index '{index_name}' with vector search capabilities.")
+        return True
     except Exception as e:
         print(f"Error creating index: {e}")
         raise
